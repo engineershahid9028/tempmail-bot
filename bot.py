@@ -1,3 +1,4 @@
+from payments import verify_deposit
 import os, re, time, threading
 from datetime import datetime, UTC
 from dateutil.relativedelta import relativedelta
@@ -209,31 +210,46 @@ def upgrade(call):
     )
 
 # ================= PAYMENTS =================
-
 @bot.message_handler(commands=['pay'])
 def pay(msg):
     try:
-        _, txid, amount, cur = msg.text.split()
+        _, txid, amount, asset = msg.text.split()
+        amount = float(amount)
+        asset = asset.upper()
+
         u = get_user(msg.chat.id)
 
-        p = create_payment(u.id, txid, amount, cur)
+        # Verify on Binance (last 2 hours)
+        ok, data = verify_deposit(txid, amount, asset, minutes=120)
+        if not ok:
+            bot.send_message(msg.chat.id, "❌ Deposit not found on Binance yet. Try again after confirmations.")
+            return
 
-        bot.send_message(msg.chat.id, "✅ Payment submitted. Waiting for admin approval.")
+        # Create payment record
+        p = create_payment(u.id, txid, str(amount), asset)
+        p.status = "approved"
 
+        # Activate premium
+        u.plan = "premium"
+        u.premium_until = datetime.utcnow() + relativedelta(days=30)
+        save_user(u)
+
+        bot.send_message(
+            msg.chat.id,
+            "✅ Payment verified on Binance!\n\n💎 Premium activated for 30 days."
+        )
+
+        # Notify admin (optional)
         if ADMIN_ID:
             bot.send_message(
                 ADMIN_ID,
-                f"💳 <b>New Payment Request</b>\n\n"
-                f"Payment ID: {p.id}\n"
-                f"User: {u.telegram_id}\n"
-                f"TXID: {txid}\n"
-                f"Amount: {amount} {cur}\n\n"
-                f"Approve: /approve {p.id}\n"
-                f"Reject: /reject {p.id}"
+                f"💰 Auto-approved payment\nUser: {u.telegram_id}\nTXID: {txid}\nAmount: {amount} {asset}"
             )
 
-    except:
-        bot.send_message(msg.chat.id, "Usage: /pay TXID AMOUNT CUR")
+    except ValueError:
+        bot.send_message(msg.chat.id, "Usage: /pay TXID AMOUNT ASSET  (e.g., /pay <txid> 10 USDT)")
+    except Exception:
+        bot.send_message(msg.chat.id, "❌ Verification error. Please try again later.")
 
 # ================= ADMIN APPROVAL =================
 
@@ -341,27 +357,22 @@ def paid(msg):
 def status_callback(call):
     chat_id = call.message.chat.id
 
-    # If admin → show admin dashboard stats
+    # Admin dashboard
     if chat_id == ADMIN_ID:
         s = db()
 
-        # Total users
         total_users = s.query(User).count()
-
-        # Total emails
         total_emails = s.query(Email).count()
 
-        # Emails today
         today = datetime.utcnow().date()
-        emails_today = s.query(Email).filter(
-            Email.created_at >= datetime.combine(today, datetime.min.time())
-        ).count()
+        start = datetime.combine(today, datetime.min.time())
 
-        # Revenue today (approved payments only)
-        revenue_today = 0
+        emails_today = s.query(Email).filter(Email.created_at >= start).count()
+
+        revenue_today = 0.0
         payments = s.query(Payment).filter(
             Payment.status == "approved",
-            Payment.created_at >= datetime.combine(today, datetime.min.time())
+            Payment.created_at >= start
         ).all()
 
         for p in payments:
@@ -375,7 +386,7 @@ def status_callback(call):
         text = (
             "📊 <b>Admin Dashboard</b>\n\n"
             f"👤 Total Users: {total_users}\n"
-            f"📧 Total Emails Created: {total_emails}\n"
+            f"📧 Total Emails: {total_emails}\n"
             f"📅 Emails Today: {emails_today}\n"
             f"💰 Revenue Today: {revenue_today}\n"
         )
@@ -385,21 +396,14 @@ def status_callback(call):
 
     # Normal user status
     u = get_user(chat_id)
-
-    if u.plan == 'premium' and u.premium_until and u.premium_until > datetime.utcnow():
-        bot.send_message(
-            chat_id,
-            f"💎 Premium active until {u.premium_until.date()}",
-            reply_markup=main_menu()
-        )
+    if u.plan == "premium" and u.premium_until and u.premium_until > datetime.utcnow():
+        bot.send_message(chat_id, f"💎 Premium active until {u.premium_until.date()}", reply_markup=main_menu())
     else:
-        bot.send_message(
-            chat_id,
-            f"🆓 Free user\nDaily quota: {u.daily_quota}",
-            reply_markup=main_menu()
-        )
+        bot.send_message(chat_id, f"🆓 Free user\nDaily quota: {u.daily_quota}", reply_markup=main_menu())
+
 
 # ================= START =================
 
 print("Bot running...")
+threading.Thread(target=subscription_watcher, daemon=True).start()
 bot.infinity_polling(skip_pending=True, allowed_updates=["message", "callback_query"])
