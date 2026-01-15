@@ -7,3 +7,5 @@ psycopg2-binary
 redis
 python-dateutil
 qrcode[pil]
+beautifulsoup4
+html2text
