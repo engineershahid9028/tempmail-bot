@@ -137,7 +137,7 @@ def newmail(call):
 
     bot.send_message(
         call.message.chat.id,
-        f"📧 <b>Here is Your Temporary Email</b>\n<code>{email}</code>\n\nAuto-fetch enabled",
+        f"📧 <b>Your Temp Email</b>\n<code>{email}</code>\n\nAuto-fetch enabled",
         reply_markup=main_menu()
     )
 
@@ -205,7 +205,7 @@ def referral(call):
 def upgrade(call):
     bot.send_message(
         call.message.chat.id,
-        "💎 <b>Upgrade Options</b>\n\n1) /pay TXID AMOUNT CURRENCY\n2) /stars (Buy with Telegram Stars)"
+        "💎 <b>Upgrade Options</b>\n\n1) /pay TXID AMOUNT CURR\n2) /stars (Buy with Telegram Stars)"
     )
 
 # ================= PAYMENTS =================
