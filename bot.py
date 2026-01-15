@@ -1,5 +1,5 @@
 import os, re, time, threading
-from datetime import datetime
+from datetime import datetime, UTC
 from dateutil.relativedelta import relativedelta
 import telebot
 from telebot.types import LabeledPrice
@@ -52,7 +52,7 @@ def get_user(tg_id):
     return u
 
 def reset_quota(u):
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     if u.last_reset != today:
         base = 5 if u.plan == "premium" else 2
         u.daily_quota = base + (u.bonus_quota or 0)
@@ -258,7 +258,7 @@ def approve_payment(msg):
             return
 
         user.plan = "premium"
-        user.premium_until = datetime.utcnow() + relativedelta(days=30)
+        user.premium_until = datetime.now(UTC) + relativedelta(days=30)
         p.status = "approved"
 
         s.commit()
@@ -331,7 +331,7 @@ def checkout(q):
 def paid(msg):
     u = get_user(msg.chat.id)
     u.plan = "premium"
-    u.premium_until = datetime.utcnow() + relativedelta(days=30)
+    u.premium_until = datetime.now(UTC) + relativedelta(days=30)
     save_user(u)
 
     bot.send_message(msg.chat.id, "🎉 <b>Premium Activated for 30 days!</b>")
