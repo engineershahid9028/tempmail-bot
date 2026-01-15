@@ -405,5 +405,31 @@ def status_callback(call):
 # ================= START =================
 
 print("Bot running...")
+def subscription_watcher():
+    while True:
+        try:
+            s = db()
+            now = datetime.utcnow()
+
+            expired = s.query(User).filter(
+                User.plan == "premium",
+                User.premium_until < now
+            ).all()
+
+            for u in expired:
+                u.plan = "free"
+                u.daily_quota = 2
+                bot.send_message(
+                    u.telegram_id,
+                    "⚠️ Your premium has expired. Renew with /pay to continue premium features."
+                )
+
+            s.commit()
+            s.close()
+        except:
+            pass
+
+        time.sleep(3600)  # check every hour
+
 threading.Thread(target=subscription_watcher, daemon=True).start()
 bot.infinity_polling(skip_pending=True, allowed_updates=["message", "callback_query"])
