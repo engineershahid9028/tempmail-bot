@@ -371,4 +371,4 @@ def stats(msg):
 # ================= START =================
 
 print("Bot running...")
-bot.infinity_polling()
+bot.infinity_polling(skip_pending=True, allowed_updates=["message", "callback_query"])
