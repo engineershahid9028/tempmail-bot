@@ -337,49 +337,64 @@ def paid(msg):
     bot.send_message(msg.chat.id, "🎉 <b>Premium Activated for 30 days!</b>")
 
 # ================= STATUS & STATS =================
-
-@bot.message_handler(commands=['status'])
-def status(msg):
-    u = get_user(msg.chat.id)
-    if u.plan == "premium" and u.premium_until and u.premium_until > datetime.utcnow():
-        bot.send_message(
-            msg.chat.id,
-            f"💎 Premium active until {u.premium_until.date()}",
-            reply_markup=main_menu()
-        )
-    else:
-        bot.send_message(
-            msg.chat.id,
-            f"🆓 Free user\nDaily quota: {u.daily_quota}",
-            reply_markup=main_menu()
-        )
-
-@bot.message_handler(commands=['stats'])
-@admin_only
-def stats(msg):
-    s = get_stats()
-    bot.send_message(
-        msg.chat.id,
-        f"📊 <b>Stats</b>\n"
-        f"Users: {s['users']}\n"
-        f"Emails: {s['emails']}\n"
-        f"Messages: {s['messages']}\n"
-        f"Payments: {s['payments']}\n"
-        f"Pending: {s['pending']}"
-    )
 @bot.callback_query_handler(func=lambda c: c.data == 'status')
 def status_callback(call):
-    u = get_user(call.message.chat.id)
+    chat_id = call.message.chat.id
+
+    # If admin → show admin dashboard stats
+    if chat_id == ADMIN_ID:
+        s = db()
+
+        # Total users
+        total_users = s.query(User).count()
+
+        # Total emails
+        total_emails = s.query(Email).count()
+
+        # Emails today
+        today = datetime.utcnow().date()
+        emails_today = s.query(Email).filter(
+            Email.created_at >= datetime.combine(today, datetime.min.time())
+        ).count()
+
+        # Revenue today (approved payments only)
+        revenue_today = 0
+        payments = s.query(Payment).filter(
+            Payment.status == "approved",
+            Payment.created_at >= datetime.combine(today, datetime.min.time())
+        ).all()
+
+        for p in payments:
+            try:
+                revenue_today += float(p.amount)
+            except:
+                pass
+
+        s.close()
+
+        text = (
+            "📊 <b>Admin Dashboard</b>\n\n"
+            f"👤 Total Users: {total_users}\n"
+            f"📧 Total Emails Created: {total_emails}\n"
+            f"📅 Emails Today: {emails_today}\n"
+            f"💰 Revenue Today: {revenue_today}\n"
+        )
+
+        bot.send_message(chat_id, text, reply_markup=main_menu())
+        return
+
+    # Normal user status
+    u = get_user(chat_id)
 
     if u.plan == 'premium' and u.premium_until and u.premium_until > datetime.utcnow():
         bot.send_message(
-            call.message.chat.id,
+            chat_id,
             f"💎 Premium active until {u.premium_until.date()}",
             reply_markup=main_menu()
         )
     else:
         bot.send_message(
-            call.message.chat.id,
+            chat_id,
             f"🆓 Free user\nDaily quota: {u.daily_quota}",
             reply_markup=main_menu()
         )
