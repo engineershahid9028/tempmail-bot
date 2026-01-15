@@ -112,7 +112,7 @@ def start_listener(chat_id, email_id, token):
 @bot.message_handler(commands=['start'])
 def start(msg):
     get_user(msg.chat.id)
-    bot.send_message(msg.chat.id, "👋 <b>Welcome to TempMail Bot!</b>", reply_markup=main_menu())
+    bot.send_message(msg.chat.id, "👋 <b>Welcome to TempMail Premium Bot! We Provide Best & Premium Emails for Your Daily Use</b>", reply_markup=main_menu())
 
 @bot.callback_query_handler(func=lambda c: c.data == 'newmail')
 def newmail(call):
@@ -137,7 +137,7 @@ def newmail(call):
 
     bot.send_message(
         call.message.chat.id,
-        f"📧 <b>Your Temp Email</b>\n<code>{email}</code>\n\nAuto-fetch enabled",
+        f"📧 <b>Here is Your Temporary Email</b>\n<code>{email}</code>\n\nAuto-fetch enabled",
         reply_markup=main_menu()
     )
 
@@ -205,7 +205,7 @@ def referral(call):
 def upgrade(call):
     bot.send_message(
         call.message.chat.id,
-        "💎 <b>Upgrade Options</b>\n\n1) /pay TXID AMOUNT CUR\n2) /stars (Telegram Stars)"
+        "💎 <b>Upgrade Options</b>\n\n1) /pay TXID AMOUNT CURRENCY\n2) /stars (Buy with Telegram Stars)"
     )
 
 # ================= PAYMENTS =================
