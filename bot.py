@@ -367,6 +367,22 @@ def stats(msg):
         f"Payments: {s['payments']}\n"
         f"Pending: {s['pending']}"
     )
+@bot.callback_query_handler(func=lambda c: c.data == 'status')
+def status_callback(call):
+    u = get_user(call.message.chat.id)
+
+    if u.plan == 'premium' and u.premium_until and u.premium_until > datetime.utcnow():
+        bot.send_message(
+            call.message.chat.id,
+            f"💎 Premium active until {u.premium_until.date()}",
+            reply_markup=main_menu()
+        )
+    else:
+        bot.send_message(
+            call.message.chat.id,
+            f"🆓 Free user\nDaily quota: {u.daily_quota}",
+            reply_markup=main_menu()
+        )
 
 # ================= START =================
 
