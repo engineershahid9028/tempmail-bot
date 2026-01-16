@@ -1,4 +1,3 @@
-
 pyTelegramBotAPI
 requests
 flask
@@ -9,3 +8,4 @@ python-dateutil
 qrcode[pil]
 beautifulsoup4
 html2text
+Pillow
