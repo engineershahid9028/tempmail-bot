@@ -262,6 +262,10 @@ def status_callback(call):
         bot.send_message(call.message.chat.id, f"🆓 Free user\nDaily quota: {u.daily_quota}", reply_markup=main_menu())
 
 # ================= START =================
+@bot.message_handler(commands=["provider"])
+def provider_check(msg):
+    bot.send_message(msg.chat.id, f"Active Provider: {type(PROROVIDER).__name__}")
+
 
 print("Bot running...")
 bot.infinity_polling(skip_pending=True, allowed_updates=["message", "callback_query"])
