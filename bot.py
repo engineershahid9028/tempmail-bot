@@ -324,7 +324,7 @@ except ValueError:
 except Exception:  
     bot.send_message(msg.chat.id, "❌ Verification error. Please try again later.")
 
-================= ADMIN APPROVAL =================
+================= ADMIN APPROVAL ================
 
 @bot.message_handler(commands=['approve'])
 @admin_only
