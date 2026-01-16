@@ -86,8 +86,7 @@ def save_user(u):
     s.close()
 
 # ================= OTP LISTENER =================
-
-def start_listener(chat_id, email_id, token):
+def start_listener(chat_id: int, email_id: int, token: str):
     if email_id in listeners:
         return
 
@@ -95,33 +94,68 @@ def start_listener(chat_id, email_id, token):
         seen = set()
         while True:
             try:
-                msgs = PROVIDER.messages(token)
-                for m in msgs:
+                for m in PROVIDER.messages(token):
                     mid = m["id"]
                     if mid in seen:
                         continue
                     seen.add(mid)
 
                     mail = PROVIDER.message(token, mid)
-                    sender = mail["from"]["address"]
-                    subject = mail["subject"]
-                    body = mail.get("text", "")
 
+                    sender = mail["from"]["address"]
+                    subject = mail.get("subject", "No Subject")
+
+                    # Mail.tm returns html as list
+                    html = ""
+                    if "html" in mail and mail["html"]:
+                        html = mail["html"][0]
+
+                    text = mail.get("text", "")
+
+                    # Convert html → readable text
+                    if html:
+                        body = html_to_text(html)
+                        links = extract_links(html)
+                    else:
+                        body = text
+                        links = []
+
+                    # Save inbox
                     s = db()
-                    s.add(Inbox(email_id=email_id, sender=sender, subject=subject, body=body))
+                    s.add(Inbox(
+                        email_id=email_id,
+                        sender=sender,
+                        subject=subject,
+                        body=body,
+                    ))
                     s.commit()
                     s.close()
 
                     otp = extract_otp(body)
 
-                    text = f"📩 <b>New Email</b>\n\n<b>From:</b> {sender}\n<b>Subject:</b> {subject}\n"
-                    if otp:
-                        text += f"\n🔐 <b>OTP:</b> <code>{otp}</code>"
+                    msg = (
+                        "📩 <b>New Email</b>\n\n"
+                        f"<b>From:</b> {sender}\n"
+                        f"<b>Subject:</b> {subject}\n\n"
+                    )
 
-                    bot.send_message(chat_id, text, reply_markup=main_menu())
+                    if otp:
+                        msg += f"🔐 <b>OTP:</b> <code>{otp}</code>\n\n"
+
+                    # Send full email body (Telegram limit safe)
+                    msg += body[:3500]
+
+                    markup = InlineKeyboardMarkup()
+
+                    # Add clickable links
+                    for title, url in links:
+                        markup.add(InlineKeyboardButton(title, url=url))
+
+                    bot.send_message(chat_id, msg, reply_markup=markup)
 
                 time.sleep(6)
             except Exception as e:
+                print("Listener error:", e)
                 time.sleep(10)
 
     t = threading.Thread(target=loop, daemon=True)
