@@ -3,6 +3,8 @@ import os, re, time, threading
 from datetime import datetime, UTC
 from dateutil.relativedelta import relativedelta
 import telebot
+from bs4 import BeautifulSoup
+import html2text
 from telebot.types import LabeledPrice
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import qrcode
@@ -86,6 +88,21 @@ def save_user(u):
     s.close()
 
 # ================= OTP LISTENER =================
+def html_to_text(html):
+    h = html2text.HTML2Text()
+    h.ignore_links = False
+    h.ignore_images = True
+    h.body_width = 0
+    return h.handle(html).strip()
+def extract_links(html):
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    for a in soup.find_all("a", href=True):
+        title = a.get_text(strip=True) or "Open Link"
+        url = a["href"]
+        links.append((title[:32], url))
+    return links[:5]
+
 def start_listener(chat_id: int, email_id: int, token: str):
     if email_id in listeners:
         return
