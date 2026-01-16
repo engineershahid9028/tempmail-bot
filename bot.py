@@ -1,5 +1,7 @@
 from payments import verify_deposit
 import os, re, time, threading
+from bs4 import BeautifulSoup
+import html2text
 from datetime import datetime, UTC
 from dateutil.relativedelta import relativedelta
 import telebot
